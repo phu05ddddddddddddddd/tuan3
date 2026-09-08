@@ -1,131 +1,132 @@
-import React, { useReducer } from 'react';
+import React, {
+  memo,
+  useCallback,
+  useMemo,
+  useState,
+} from 'react';
+
 import {
   View,
   Text,
   TextInput,
   Button,
+  FlatList,
   StyleSheet,
 } from 'react-native';
 
-const initialState = {
-  email: '',
-  password: '',
-  error: '',
-};
+const ProductItem = memo(function ProductItem({
+  item,
+  onSelect,
+}: {
+  item: {
+    id: string;
+    name: string;
+    price: number;
+  };
+  onSelect: (item: {
+    id: string;
+    name: string;
+    price: number;
+  }) => void;
+}) {
+  return (
+    <View style={styles.productButton}>
+      <Button
+        title={`${item.name} - ${item.price.toLocaleString('vi-VN')}đ`}
+        onPress={() => onSelect(item)}
+        color="#2196F3"
+      />
+    </View>
+  );
+});
 
-function formReducer(
-  state: typeof initialState,
-  action: {
-    type: string;
-    payload?: string;
-  }
-) {
-  switch (action.type) {
-    case 'SET_EMAIL':
-      return {
-        ...state,
-        email: action.payload || '',
-        error: '',
-      };
+export default function ProductScreen() {
+  const [keyword, setKeyword] = useState('');
+  const [selectedName, setSelectedName] = useState('');
 
-    case 'SET_PASSWORD':
-      return {
-        ...state,
-        password: action.payload || '',
-        error: '',
-      };
-
-    case 'SET_ERROR':
-      return {
-        ...state,
-        error: action.payload || '',
-      };
-
-    case 'RESET':
-      return initialState;
-
-    default:
-      return state;
-  }
-}
-
-export default function LoginScreen() {
-  const [state, dispatch] = useReducer(
-    formReducer,
-    initialState
+  const products = useMemo(
+    () => [
+      {
+        id: '1',
+        name: 'Điện thoại',
+        price: 12000000,
+      },
+      {
+        id: '2',
+        name: 'Máy tính bảng',
+        price: 9000000,
+      },
+      {
+        id: '3',
+        name: 'Tai nghe',
+        price: 1500000,
+      },
+    ],
+    []
   );
 
-  const handleLogin = () => {
-    if (!state.email || !state.password) {
-      dispatch({
-        type: 'SET_ERROR',
-        payload: 'Vui lòng nhập đầy đủ thông tin',
-      });
-      return;
-    }
+  const filteredProducts = useMemo(() => {
+    const normalizedKeyword = keyword
+      .trim()
+      .toLowerCase();
 
-    dispatch({
-      type: 'SET_ERROR',
-      payload: '',
-    });
-  };
+    return products.filter(product =>
+      product.name
+        .toLowerCase()
+        .includes(normalizedKeyword)
+    );
+  }, [keyword, products]);
+
+  const handleSelectProduct = useCallback(
+    (product: {
+      id: string;
+      name: string;
+      price: number;
+    }) => {
+      setSelectedName(product.name);
+    },
+    []
+  );
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Đăng nhập</Text>
+      <Text style={styles.title}>
+        Danh sách sản phẩm
+      </Text>
 
       <TextInput
-        style={styles.input}
-        value={state.email}
-        onChangeText={text =>
-          dispatch({
-            type: 'SET_EMAIL',
-            payload: text,
-          })
-        }
-        placeholder="Email"
+        value={keyword}
+        onChangeText={setKeyword}
+        placeholder="Tìm sản phẩm"
         placeholderTextColor="#AAAAAA"
-        keyboardType="email-address"
-        autoCapitalize="none"
+        style={styles.input}
       />
 
-      <TextInput
-        style={styles.input}
-        value={state.password}
-        onChangeText={text =>
-          dispatch({
-            type: 'SET_PASSWORD',
-            payload: text,
-          })
-        }
-        placeholder="Mật khẩu"
-        placeholderTextColor="#AAAAAA"
-        secureTextEntry
-      />
-
-      {state.error ? (
-        <Text style={styles.error}>
-          {state.error}
+      <Text style={styles.selected}>
+        Sản phẩm đã chọn:{' '}
+        <Text style={styles.selectedName}>
+          {selectedName || 'Chưa chọn'}
         </Text>
-      ) : null}
+      </Text>
 
-      <View style={styles.button}>
-        <Button
-          title="Đăng nhập"
-          color="#2196F3"
-          onPress={handleLogin}
-        />
-      </View>
-
-      <View style={styles.button}>
-        <Button
-          title="Đặt lại"
-          color="#F44336"
-          onPress={() =>
-            dispatch({ type: 'RESET' })
-          }
-        />
-      </View>
+      <FlatList
+        data={filteredProducts}
+        keyExtractor={item => item.id}
+        renderItem={({ item }) => (
+          <ProductItem
+            item={item}
+            onSelect={handleSelectProduct}
+          />
+        )}
+        ListEmptyComponent={
+          <Text style={styles.empty}>
+            Không tìm thấy sản phẩm
+          </Text>
+        }
+        ItemSeparatorComponent={() => (
+          <View style={styles.separator} />
+        )}
+      />
     </View>
   );
 }
@@ -133,17 +134,16 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
     padding: 24,
     backgroundColor: '#121212',
   },
 
   title: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: 'bold',
-    textAlign: 'center',
     color: '#FFFFFF',
-    marginBottom: 30,
+    textAlign: 'center',
+    marginBottom: 20,
   },
 
   input: {
@@ -152,22 +152,37 @@ const styles = StyleSheet.create({
     borderColor: '#555555',
     borderRadius: 8,
     paddingHorizontal: 15,
-    marginBottom: 15,
     fontSize: 17,
     color: '#FFFFFF',
     backgroundColor: '#1E1E1E',
-  },
-
-  error: {
-    color: '#FF5252',
-    fontSize: 16,
     marginBottom: 15,
-    textAlign: 'center',
   },
 
-  button: {
-    marginTop: 8,
+  selected: {
+    fontSize: 17,
+    color: '#FFFFFF',
+    marginBottom: 15,
+  },
+
+  selectedName: {
+    color: '#64B5F6',
+    fontWeight: 'bold',
+  },
+
+  productButton: {
     borderRadius: 8,
     overflow: 'hidden',
+    backgroundColor: '#2196F3',
+  },
+
+  separator: {
+    height: 12,
+  },
+
+  empty: {
+    textAlign: 'center',
+    color: '#AAAAAA',
+    fontSize: 17,
+    marginTop: 30,
   },
 });
