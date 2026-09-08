@@ -1,23 +1,21 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
 
-export default function App() {
+export default function TimerScreen() {
+  const [seconds, setSeconds] = useState(0);
 
-  const [fullName, setFullName] = useState('');
+  useEffect(() => {
+    const timerId = setInterval(() => {
+      setSeconds(previousSeconds => previousSeconds + 1);
+    }, 1000);
+
+    return () => clearInterval(timerId);
+  }, []);
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Nhập họ tên</Text>
-
-      <TextInput
-        style={styles.input}
-        value={fullName}
-        onChangeText={setFullName}
-        placeholder="Nhập họ tên"
-      />
-
-      <Text style={styles.greeting}>
-        {fullName ? `Xin chào, ${fullName}!` : 'Vui lòng nhập họ tên'}
+      <Text style={styles.title}>
+        Thời gian: {seconds} giây
       </Text>
     </View>
   );
@@ -28,29 +26,12 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#fff',
+    backgroundColor: '#121212',
   },
 
   title: {
     fontSize: 24,
+    color: '#FFFFFF',
     fontWeight: 'bold',
-    marginBottom: 20,
-  },
-
-  input: {
-    width: '100%',
-    height: 50,
-    borderWidth: 1,
-    borderColor: '#999',
-    borderRadius: 8,
-    paddingHorizontal: 15,
-    fontSize: 16,
-  },
-
-  greeting: {
-    marginTop: 20,
-    fontSize: 20,
-    color: '#007AFF',
   },
 });
