@@ -1,73 +1,46 @@
-import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  Switch,
-  StyleSheet,
-} from 'react-native';
+import React, { createContext, useContext, useState } from 'react';
+import { View, Text, Button, StyleSheet } from 'react-native';
 
-export default function ConnectionScreen() {
+const ThemeContext = createContext(null);
 
-  const [isConnected, setIsConnected] = useState(false);
-  const [message, setMessage] = useState('Chưa kết nối');
-
-  
-  useEffect(() => {
-    if (isConnected) {
-      setMessage('Thiết bị đã kết nối');
-    } else {
-      setMessage('Thiết bị đã ngắt kết nối');
-    }
-  }, [isConnected]);
+function HomeScreen() {
+  const { isDarkMode, toggleTheme } = useContext(ThemeContext);
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>
-        Trạng thái kết nối
+    <View
+      style={[
+        styles.container,
+        { backgroundColor: isDarkMode ? '#222222' : '#ffffff' },
+      ]}
+    >
+      <Text style={{ color: isDarkMode ? '#ffffff' : '#222222' }}>
+        {isDarkMode ? 'Chế độ tối' : 'Chế độ sáng'}
       </Text>
 
-      <Switch
-        value={isConnected}
-        onValueChange={setIsConnected}
-        trackColor={{
-          false: '#555555',
-          true: '#4CAF50',
-        }}
-        thumbColor={isConnected ? '#FFFFFF' : '#CCCCCC'}
-      />
-
-      <Text
-        style={[
-          styles.message,
-          {
-            color: isConnected ? '#4CAF50' : '#FF5252',
-          },
-        ]}
-      >
-        {message}
-      </Text>
+      <Button title="Đổi giao diện" onPress={toggleTheme} />
     </View>
+  );
+}
+
+export default function App() {
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  const toggleTheme = () => {
+    setIsDarkMode(previousMode => !previousMode);
+  };
+
+  return (
+    <ThemeContext.Provider value={{ isDarkMode, toggleTheme }}>
+      <HomeScreen />
+    </ThemeContext.Provider>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    gap: 16,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#121212',
-  },
-
-  title: {
-    fontSize: 26,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginBottom: 30,
-  },
-
-  message: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginTop: 20,
   },
 });
