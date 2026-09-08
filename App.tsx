@@ -1,5 +1,4 @@
 import React, {
-  memo,
   useCallback,
   useMemo,
   useState,
@@ -14,76 +13,59 @@ import {
   StyleSheet,
 } from 'react-native';
 
-const ProductItem = memo(function ProductItem({
-  item,
-  onSelect,
-}: {
-  item: {
-    id: string;
-    name: string;
-    price: number;
-  };
-  onSelect: (item: {
-    id: string;
-    name: string;
-    price: number;
-  }) => void;
-}) {
-  return (
-    <View style={styles.productButton}>
-      <Button
-        title={`${item.name} - ${item.price.toLocaleString('vi-VN')}đ`}
-        onPress={() => onSelect(item)}
-        color="#2196F3"
-      />
-    </View>
-  );
-});
+// Danh sách sản phẩm đặt bên ngoài component
+// để tránh tạo array mới mỗi lần render
+const products = [
+  {
+    id: '1',
+    name: 'Áo thun',
+    price: 200000,
+  },
+  {
+    id: '2',
+    name: 'Quần jean',
+    price: 450000,
+  },
+  {
+    id: '3',
+    name: 'Giày thể thao',
+    price: 800000,
+  },
+];
 
-export default function ProductScreen() {
+export default function App() {
+  // Trạng thái từ khóa tìm kiếm
   const [keyword, setKeyword] = useState('');
-  const [selectedName, setSelectedName] = useState('');
 
-  const products = useMemo(
-    () => [
-      {
-        id: '1',
-        name: 'Điện thoại',
-        price: 12000000,
-      },
-      {
-        id: '2',
-        name: 'Máy tính bảng',
-        price: 9000000,
-      },
-      {
-        id: '3',
-        name: 'Tai nghe',
-        price: 1500000,
-      },
-    ],
-    []
-  );
-
+  // Lọc sản phẩm bằng useMemo
   const filteredProducts = useMemo(() => {
-    const normalizedKeyword = keyword
+    const searchKeyword = keyword
       .trim()
       .toLowerCase();
 
     return products.filter(product =>
       product.name
         .toLowerCase()
-        .includes(normalizedKeyword)
+        .includes(searchKeyword)
     );
-  }, [keyword, products]);
+  }, [keyword]);
 
-  const handleSelectProduct = useCallback(
+  // Tính tổng giá các sản phẩm đang hiển thị
+  const totalPrice = useMemo(() => {
+    return filteredProducts.reduce(
+      (total, product) => total + product.price,
+      0
+    );
+  }, [filteredProducts]);
+
+  // Hàm chọn sản phẩm
+  const handleSelect = useCallback(
     (product: {
       id: string;
       name: string;
       price: number;
     }) => {
-      setSelectedName(product.name);
+      console.log('Đã chọn:', product.name);
     },
     []
   );
@@ -97,35 +79,41 @@ export default function ProductScreen() {
       <TextInput
         value={keyword}
         onChangeText={setKeyword}
-        placeholder="Tìm sản phẩm"
+        placeholder="Tìm sản phẩm..."
         placeholderTextColor="#AAAAAA"
         style={styles.input}
       />
 
-      <Text style={styles.selected}>
-        Sản phẩm đã chọn:{' '}
-        <Text style={styles.selectedName}>
-          {selectedName || 'Chưa chọn'}
-        </Text>
+      <Text style={styles.total}>
+        Tổng giá:{' '}
+        {totalPrice.toLocaleString('vi-VN')}đ
       </Text>
 
       <FlatList
         data={filteredProducts}
         keyExtractor={item => item.id}
         renderItem={({ item }) => (
-          <ProductItem
-            item={item}
-            onSelect={handleSelectProduct}
-          />
+          <View style={styles.product}>
+            <Text style={styles.productName}>
+              {item.name}
+            </Text>
+
+            <Text style={styles.price}>
+              {item.price.toLocaleString('vi-VN')}đ
+            </Text>
+
+            <Button
+              title="Chọn sản phẩm"
+              color="#2196F3"
+              onPress={() => handleSelect(item)}
+            />
+          </View>
         )}
         ListEmptyComponent={
           <Text style={styles.empty}>
             Không tìm thấy sản phẩm
           </Text>
         }
-        ItemSeparatorComponent={() => (
-          <View style={styles.separator} />
-        )}
       />
     </View>
   );
@@ -139,7 +127,7 @@ const styles = StyleSheet.create({
   },
 
   title: {
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: 'bold',
     color: '#FFFFFF',
     textAlign: 'center',
@@ -158,25 +146,31 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
 
-  selected: {
-    fontSize: 17,
-    color: '#FFFFFF',
-    marginBottom: 15,
-  },
-
-  selectedName: {
-    color: '#64B5F6',
+  total: {
+    fontSize: 20,
     fontWeight: 'bold',
+    color: '#4CAF50',
+    marginBottom: 20,
   },
 
-  productButton: {
-    borderRadius: 8,
-    overflow: 'hidden',
-    backgroundColor: '#2196F3',
+  product: {
+    backgroundColor: '#1E1E1E',
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 12,
   },
 
-  separator: {
-    height: 12,
+  productName: {
+    fontSize: 19,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 5,
+  },
+
+  price: {
+    fontSize: 17,
+    color: '#64B5F6',
+    marginBottom: 10,
   },
 
   empty: {
