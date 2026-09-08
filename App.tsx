@@ -1,21 +1,50 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import {
+  View,
+  Text,
+  Switch,
+  StyleSheet,
+} from 'react-native';
 
-export default function TimerScreen() {
-  const [seconds, setSeconds] = useState(0);
+export default function ConnectionScreen() {
 
+  const [isConnected, setIsConnected] = useState(false);
+  const [message, setMessage] = useState('Chưa kết nối');
+
+  
   useEffect(() => {
-    const timerId = setInterval(() => {
-      setSeconds(previousSeconds => previousSeconds + 1);
-    }, 1000);
-
-    return () => clearInterval(timerId);
-  }, []);
+    if (isConnected) {
+      setMessage('Thiết bị đã kết nối');
+    } else {
+      setMessage('Thiết bị đã ngắt kết nối');
+    }
+  }, [isConnected]);
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>
-        Thời gian: {seconds} giây
+        Trạng thái kết nối
+      </Text>
+
+      <Switch
+        value={isConnected}
+        onValueChange={setIsConnected}
+        trackColor={{
+          false: '#555555',
+          true: '#4CAF50',
+        }}
+        thumbColor={isConnected ? '#FFFFFF' : '#CCCCCC'}
+      />
+
+      <Text
+        style={[
+          styles.message,
+          {
+            color: isConnected ? '#4CAF50' : '#FF5252',
+          },
+        ]}
+      >
+        {message}
       </Text>
     </View>
   );
@@ -30,8 +59,15 @@ const styles = StyleSheet.create({
   },
 
   title: {
-    fontSize: 24,
-    color: '#FFFFFF',
+    fontSize: 26,
     fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 30,
+  },
+
+  message: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginTop: 20,
   },
 });
