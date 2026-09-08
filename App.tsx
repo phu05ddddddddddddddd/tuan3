@@ -1,6 +1,10 @@
 import React, {
+  createContext,
   useCallback,
+  useContext,
+  useEffect,
   useMemo,
+  useReducer,
   useState,
 } from 'react';
 
@@ -11,107 +15,357 @@ import {
   Button,
   FlatList,
   StyleSheet,
+  Switch,
+  Pressable,
 } from 'react-native';
 
-// Danh sách sản phẩm đặt bên ngoài component
-// để tránh tạo array mới mỗi lần render
-const products = [
-  {
-    id: '1',
-    name: 'Áo thun',
-    price: 200000,
-  },
-  {
-    id: '2',
-    name: 'Quần jean',
-    price: 450000,
-  },
-  {
-    id: '3',
-    name: 'Giày thể thao',
-    price: 800000,
-  },
-];
+type Todo = {
+  id: string;
+  title: string;
+  completed: boolean;
+};
 
-export default function App() {
-  // Trạng thái từ khóa tìm kiếm
+type TodoAction =
+  | {
+      type: 'ADD_TODO';
+      payload: string;
+    }
+  | {
+      type: 'TOGGLE_TODO';
+      payload: string;
+    }
+  | {
+      type: 'DELETE_TODO';
+      payload: string;
+    };
+
+const initialTodos: Todo[] = [];
+
+function todoReducer(
+  state: Todo[],
+  action: TodoAction
+): Todo[] {
+  switch (action.type) {
+    case 'ADD_TODO':
+      return [
+        ...state,
+        {
+          id: Date.now().toString(),
+          title: action.payload,
+          completed: false,
+        },
+      ];
+
+    case 'TOGGLE_TODO':
+      return state.map(todo =>
+        todo.id === action.payload
+          ? {
+              ...todo,
+              completed: !todo.completed,
+            }
+          : todo
+      );
+
+    case 'DELETE_TODO':
+      return state.filter(
+        todo => todo.id !== action.payload
+      );
+
+    default:
+      return state;
+  }
+}
+
+type ThemeContextType = {
+  isDark: boolean;
+  toggleTheme: () => void;
+};
+
+const ThemeContext =
+  createContext<ThemeContextType | null>(null);
+
+function ThemeProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const [isDark, setIsDark] = useState(true);
+
+  const toggleTheme = useCallback(() => {
+    setIsDark(previous => !previous);
+  }, []);
+
+  return (
+    <ThemeContext.Provider
+      value={{
+        isDark,
+        toggleTheme,
+      }}
+    >
+      {children}
+    </ThemeContext.Provider>
+  );
+}
+
+type TodoItemProps = {
+  todo: Todo;
+  onToggle: (id: string) => void;
+  onDelete: (id: string) => void;
+};
+
+const TodoItem = React.memo(
+  function TodoItem({
+    todo,
+    onToggle,
+    onDelete,
+  }: TodoItemProps) {
+    const { isDark } = useContext(ThemeContext)!;
+
+    return (
+      <View
+        style={[
+          styles.todoItem,
+          {
+            backgroundColor: isDark
+              ? '#1E1E1E'
+              : '#F2F2F2',
+          },
+        ]}
+      >
+        <Pressable
+          style={styles.todoContent}
+          onPress={() => onToggle(todo.id)}
+        >
+          <Text
+            style={[
+              styles.todoText,
+              {
+                color: isDark
+                  ? '#FFFFFF'
+                  : '#222222',
+                textDecorationLine: todo.completed
+                  ? 'line-through'
+                  : 'none',
+                opacity: todo.completed ? 0.5 : 1,
+              },
+            ]}
+          >
+            {todo.completed ? '✓ ' : '○ '}
+            {todo.title}
+          </Text>
+        </Pressable>
+
+        <View style={styles.deleteButton}>
+          <Button
+            title="Xóa"
+            color="#F44336"
+            onPress={() => onDelete(todo.id)}
+          />
+        </View>
+      </View>
+    );
+  }
+);
+
+function TodoScreen() {
+  const { isDark, toggleTheme } =
+    useContext(ThemeContext)!;
+
+  const [todos, dispatch] = useReducer(
+    todoReducer,
+    initialTodos
+  );
+
+  const [input, setInput] = useState('');
   const [keyword, setKeyword] = useState('');
 
-  // Lọc sản phẩm bằng useMemo
-  const filteredProducts = useMemo(() => {
-    const searchKeyword = keyword
-      .trim()
-      .toLowerCase();
+  const handleAddTodo = useCallback(() => {
+    const title = input.trim();
 
-    return products.filter(product =>
-      product.name
-        .toLowerCase()
-        .includes(searchKeyword)
-    );
-  }, [keyword]);
+    if (!title) {
+      return;
+    }
 
-  // Tính tổng giá các sản phẩm đang hiển thị
-  const totalPrice = useMemo(() => {
-    return filteredProducts.reduce(
-      (total, product) => total + product.price,
-      0
-    );
-  }, [filteredProducts]);
+    dispatch({
+      type: 'ADD_TODO',
+      payload: title,
+    });
 
-  // Hàm chọn sản phẩm
-  const handleSelect = useCallback(
-    (product: {
-      id: string;
-      name: string;
-      price: number;
-    }) => {
-      console.log('Đã chọn:', product.name);
+    setInput('');
+  }, [input]);
+
+  const handleToggleTodo = useCallback(
+    (id: string) => {
+      dispatch({
+        type: 'TOGGLE_TODO',
+        payload: id,
+      });
     },
     []
   );
 
+  const handleDeleteTodo = useCallback(
+    (id: string) => {
+      dispatch({
+        type: 'DELETE_TODO',
+        payload: id,
+      });
+    },
+    []
+  );
+
+  const filteredTodos = useMemo(() => {
+    const searchKeyword = keyword
+      .trim()
+      .toLowerCase();
+
+    return todos.filter(todo =>
+      todo.title
+        .toLowerCase()
+        .includes(searchKeyword)
+    );
+  }, [todos, keyword]);
+
+  const remainingTodos = useMemo(() => {
+    return todos.filter(todo => !todo.completed)
+      .length;
+  }, [todos]);
+
+  useEffect(() => {
+    console.log(
+      `Danh sách hiện có ${todos.length} công việc`
+    );
+  }, [todos.length]);
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>
-        Danh sách sản phẩm
+    <View
+      style={[
+        styles.container,
+        {
+          backgroundColor: isDark
+            ? '#121212'
+            : '#FFFFFF',
+        },
+      ]}
+    >
+      <Text
+        style={[
+          styles.title,
+          {
+            color: isDark
+              ? '#FFFFFF'
+              : '#222222',
+          },
+        ]}
+      >
+        Quản lý công việc
       </Text>
+
+      <View style={styles.themeRow}>
+        <Text
+          style={[
+            styles.themeText,
+            {
+              color: isDark
+                ? '#FFFFFF'
+                : '#222222',
+            },
+          ]}
+        >
+          {isDark
+            ? '🌙 Chế độ tối'
+            : '☀️ Chế độ sáng'}
+        </Text>
+
+        <Switch
+          value={isDark}
+          onValueChange={toggleTheme}
+          trackColor={{
+            false: '#999999',
+            true: '#4CAF50',
+          }}
+          thumbColor="#FFFFFF"
+        />
+      </View>
+
+      <View style={styles.counterBox}>
+        <Text style={styles.counter}>
+          Việc chưa hoàn thành: {remainingTodos}
+        </Text>
+      </View>
+
+      <View style={styles.inputRow}>
+        <TextInput
+          value={input}
+          onChangeText={setInput}
+          placeholder="Nhập công việc..."
+          placeholderTextColor={
+            isDark ? '#AAAAAA' : '#777777'
+          }
+          style={[
+            styles.input,
+            {
+              color: isDark
+                ? '#FFFFFF'
+                : '#222222',
+              backgroundColor: isDark
+                ? '#1E1E1E'
+                : '#F5F5F5',
+            },
+          ]}
+        />
+
+        <Button
+          title="Thêm"
+          color="#2196F3"
+          onPress={handleAddTodo}
+        />
+      </View>
 
       <TextInput
         value={keyword}
         onChangeText={setKeyword}
-        placeholder="Tìm sản phẩm..."
-        placeholderTextColor="#AAAAAA"
-        style={styles.input}
+        placeholder="🔍 Tìm công việc..."
+        placeholderTextColor={
+          isDark ? '#AAAAAA' : '#777777'
+        }
+        style={[
+          styles.searchInput,
+          {
+            color: isDark
+              ? '#FFFFFF'
+              : '#222222',
+            backgroundColor: isDark
+              ? '#1E1E1E'
+              : '#F5F5F5',
+          },
+        ]}
       />
 
-      <Text style={styles.total}>
-        Tổng giá:{' '}
-        {totalPrice.toLocaleString('vi-VN')}đ
-      </Text>
-
       <FlatList
-        data={filteredProducts}
+        data={filteredTodos}
         keyExtractor={item => item.id}
         renderItem={({ item }) => (
-          <View style={styles.product}>
-            <Text style={styles.productName}>
-              {item.name}
-            </Text>
-
-            <Text style={styles.price}>
-              {item.price.toLocaleString('vi-VN')}đ
-            </Text>
-
-            <Button
-              title="Chọn sản phẩm"
-              color="#2196F3"
-              onPress={() => handleSelect(item)}
-            />
-          </View>
+          <TodoItem
+            todo={item}
+            onToggle={handleToggleTodo}
+            onDelete={handleDeleteTodo}
+          />
         )}
         ListEmptyComponent={
-          <Text style={styles.empty}>
-            Không tìm thấy sản phẩm
+          <Text
+            style={[
+              styles.empty,
+              {
+                color: isDark
+                  ? '#AAAAAA'
+                  : '#777777',
+              },
+            ]}
+          >
+            {todos.length === 0
+              ? 'Chưa có công việc nào'
+              : 'Không tìm thấy công việc'}
           </Text>
         }
       />
@@ -119,63 +373,103 @@ export default function App() {
   );
 }
 
+export default function App() {
+  return (
+    <ThemeProvider>
+      <TodoScreen />
+    </ThemeProvider>
+  );
+}
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 24,
-    backgroundColor: '#121212',
   },
 
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#FFFFFF',
     textAlign: 'center',
     marginBottom: 20,
   },
 
+  themeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+
+  themeText: {
+    fontSize: 16,
+  },
+
+  counterBox: {
+    backgroundColor: '#2196F3',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 15,
+  },
+
+  counter: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 12,
+  },
+
   input: {
+    flex: 1,
     height: 50,
     borderWidth: 1,
     borderColor: '#555555',
     borderRadius: 8,
     paddingHorizontal: 15,
-    fontSize: 17,
-    color: '#FFFFFF',
-    backgroundColor: '#1E1E1E',
+    fontSize: 16,
+  },
+
+  searchInput: {
+    height: 50,
+    borderWidth: 1,
+    borderColor: '#555555',
+    borderRadius: 8,
+    paddingHorizontal: 15,
+    fontSize: 16,
     marginBottom: 15,
   },
 
-  total: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#4CAF50',
-    marginBottom: 20,
-  },
-
-  product: {
-    backgroundColor: '#1E1E1E',
-    borderRadius: 10,
-    padding: 15,
-    marginBottom: 12,
-  },
-
-  productName: {
-    fontSize: 19,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginBottom: 5,
-  },
-
-  price: {
-    fontSize: 17,
-    color: '#64B5F6',
+  todoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 8,
+    padding: 12,
     marginBottom: 10,
+  },
+
+  todoContent: {
+    flex: 1,
+  },
+
+  todoText: {
+    fontSize: 17,
+  },
+
+  deleteButton: {
+    marginLeft: 10,
+    borderRadius: 6,
+    overflow: 'hidden',
   },
 
   empty: {
     textAlign: 'center',
-    color: '#AAAAAA',
     fontSize: 17,
     marginTop: 30,
   },
